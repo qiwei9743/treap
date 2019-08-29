@@ -1,3 +1,3 @@
-pub mod treap;
+pub mod treapimpl;
 
-pub use treap::v1::Treap;
+pub use crate::treapimpl::v1::Treap;
