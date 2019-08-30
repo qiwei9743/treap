@@ -1,9 +1,8 @@
 use rand::prelude::*;
-use std::cell::RefCell;
+use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 
 #[derive(Debug)]
-#[repr(C)]
 struct TNode<T: std::fmt::Debug> {
     key: T,
     priority: u16,
@@ -19,7 +18,7 @@ where
 
 impl<T> Treap<T>
 where
-    T: PartialOrd + Default + std::fmt::Debug,
+    T: Ord + std::fmt::Debug,
 {
     pub fn new() -> Treap<T> {
         println!("{:?}", std::mem::size_of::<TNode<i32>>());
@@ -33,41 +32,39 @@ where
         root: &mut Option<Rc<RefCell<TNode<T>>>>,
         key: T,
     ) -> bool {
+        let rkey = &key;
         if let Some(rc_root) = root.clone().as_ref() {
-            let inserted = if key < rc_root.as_ref().borrow().key {
-                let ret = Self::_insert(
-                    Some(rc_root.clone()),
-                    &mut rc_root.borrow_mut().left,
-                    key,
-                );
-                if rc_root.as_ref().borrow().priority
-                    < rc_root
-                        .borrow()
-                        .left
-                        .as_ref()
-                        .map_or(0, |x| x.as_ref().borrow().priority)
-                {
-                    Self::rotate_right(root);
+            let cmp = rkey.cmp(&rc_root.as_ref().borrow().key);
+            let inserted = match cmp {
+                std::cmp::Ordering::Less => {
+                    let ret =
+                        Self::_insert(Some(rc_root.clone()), &mut rc_root.borrow_mut().left, key);
+                    if rc_root.as_ref().borrow().priority
+                        < rc_root
+                            .borrow()
+                            .left
+                            .as_ref()
+                            .map_or(0, |x| x.as_ref().borrow().priority)
+                    {
+                        Self::rotate_right(root);
+                    }
+                    ret
                 }
-                ret
-            } else if key > rc_root.as_ref().borrow().key {
-                let ret = Self::_insert(
-                    Some(rc_root.clone()),
-                    &mut rc_root.borrow_mut().right,
-                    key,
-                );
-                if rc_root.as_ref().borrow().priority
-                    < rc_root
-                        .borrow()
-                        .right
-                        .as_ref()
-                        .map_or(0, |x| x.as_ref().borrow().priority)
-                {
-                    Self::rotate_left(root);
+                std::cmp::Ordering::Greater => {
+                    let ret =
+                        Self::_insert(Some(rc_root.clone()), &mut rc_root.borrow_mut().right, key);
+                    if rc_root.borrow().priority
+                        < rc_root
+                            .borrow()
+                            .right
+                            .as_ref()
+                            .map_or(0, |x| x.as_ref().borrow().priority)
+                    {
+                        Self::rotate_left(root);
+                    }
+                    ret
                 }
-                ret
-            } else {
-                false
+                std::cmp::Ordering::Equal => false,
             };
 
             if inserted {
@@ -90,9 +87,47 @@ where
         }
     }
 
-    fn nth(root: Option<Rc<RefCell<TNode<T>>>>) -> Option<usize> {
-        unimplemented!()
-    }
+    // fn nth(root: &Option<Rc<RefCell<TNode<T>>>>, nth: usize) -> Option<Ref<T>> {
+    //     if nth < root.as_ref().map(|x| x.borrow().size).unwrap_or(0) {
+    //         let left_size = root
+    //             .as_ref()
+    //             .and_then(|x| x.borrow().left.as_ref().map(|y| y.borrow().size))
+    //             .unwrap_or(0);
+    //         return if nth < left_size {
+    //             Self::nth(&root.as_ref().unwrap().borrow().left, nth)
+    //         } else if nth == left_size {
+    //             root.as_ref().map(|x| std::cell::Ref::map(x.borrow(), |y| &y.key))
+    //         } else {
+    //             Self::nth(&root.as_ref().unwrap().borrow().right, nth - left_size - 1)
+    //         }
+    //     }
+    //     None
+    // }
+
+    // fn nth(&self, nth: usize) -> Option<&T> {
+    // fn nth(&self, nth: usize) -> Option<Ref<T>> {
+    // fn nth(&self, nth: usize) -> Option<Rc<RefCell<TNode<T>>>> {
+    //     let root = self.0.clone();
+    //     let node = Self::_nth(root, nth);
+    //     node
+    // }
+
+    // fn _nth(root: Option<Rc<RefCell<TNode<T>>>>, nth: usize) -> Option<Rc<RefCell<TNode<T>>>> {
+    //     if nth < root.as_ref().map(|x| x.borrow().size).unwrap_or(0) {
+    //         let left_size = root
+    //             .as_ref()
+    //             .and_then(|x| x.borrow().left.as_ref().map(|y| y.borrow().size))
+    //             .unwrap_or(0);
+    //         return if nth < left_size {
+    //             Self::_nth(root.as_ref().unwrap().borrow().left.clone(), nth)
+    //         } else if nth == left_size {
+    //             root
+    //         } else {
+    //             Self::_nth(root.as_ref().unwrap().borrow().right.clone(), nth - left_size - 1)
+    //         };
+    //     }
+    //     None
+    // }
 
     fn find_nth(root: &Option<Rc<RefCell<TNode<T>>>>, nth: usize) -> Option<Rc<RefCell<TNode<T>>>> {
         if let Some(rc_root) = root.as_ref() {
@@ -113,20 +148,19 @@ where
         None
     }
 
-    fn find(root: &Option<Rc<RefCell<TNode<T>>>>, key: T) -> Option<Rc<RefCell<TNode<T>>>> {
-        if let Some(rc_root) = root {
-            let root_node = rc_root.as_ref().borrow();
-            if root_node.key < key {
-                return Self::find(&root_node.left, key);
-            } else if root_node.key > key {
-                return Self::find(&root_node.right, key);
-            } else {
-                return Some(rc_root.clone());
+    fn find(root: &Option<Rc<RefCell<TNode<T>>>>, key: &T) -> Option<Rc<RefCell<TNode<T>>>> {
+        if let Some(rc_root) = root.as_ref() {
+            match key.cmp(&rc_root.borrow().key) {
+                std::cmp::Ordering::Less => Self::find(&rc_root.borrow().left, key),
+                std::cmp::Ordering::Greater => Self::find(&rc_root.borrow().right, key),
+                std::cmp::Ordering::Equal => Some(rc_root.clone()),
             }
+        } else {
+            None
         }
-        None
     }
-    pub fn delete(key: T) {}
+    pub fn delete(key: T) {
+    }
 
     fn delete_nth(nth: usize) -> Option<Rc<RefCell<TNode<T>>>> {
         unimplemented!()
@@ -147,8 +181,7 @@ where
             .upgrade()
             .map_or(Weak::new(), |x| Rc::downgrade(&x));
 
-        root.as_ref().unwrap().borrow_mut().parent =
-            Rc::downgrade(right.as_ref().unwrap());
+        root.as_ref().unwrap().borrow_mut().parent = Rc::downgrade(right.as_ref().unwrap());
         right.as_ref().unwrap().borrow_mut().left = root.take();
 
         *root = right;
@@ -158,8 +191,7 @@ where
         if left.is_none() {
             return;
         }
-        root.as_ref().unwrap().borrow_mut().left =
-            left.as_ref().unwrap().borrow_mut().right.take();
+        root.as_ref().unwrap().borrow_mut().left = left.as_ref().unwrap().borrow_mut().right.take();
         left.as_ref().unwrap().borrow_mut().parent = root
             .as_ref()
             .unwrap()
@@ -198,32 +230,14 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use rand::prelude::*;
 
-    use std::cell::RefCell;
-    use std::collections::HashMap;
-    use std::rc::Rc;
     #[test]
     fn test1() {
         let mut treap = Treap::new();
         treap.insert(10);
         treap.insert(12);
+        treap.insert(13);
+
         treap.bfs_print();
-    }
-    #[test]
-    fn test2() {
-        let shared_map: Rc<RefCell<_>> = Rc::new(RefCell::new(HashMap::new()));
-        shared_map.borrow_mut().insert("africa", 92388);
-        shared_map.borrow_mut().insert("kyoto", 11837);
-        shared_map.borrow_mut().insert("piccadilly", 11826);
-        shared_map.borrow_mut().insert("marbles", 38);
-    }
-    #[test]
-    fn test3() {
-        let s1: Option<Rc<RefCell<_>>> = Some(Rc::new(RefCell::new(HashMap::new())));
-        s1.as_ref().unwrap().borrow_mut().insert("africa", 92388);
-        //        shared_map.borrow_mut().insert("kyoto", 11837);
-        //        shared_map.borrow_mut().insert("piccadilly", 11826);
-        //        shared_map.borrow_mut().insert("marbles", 38);
     }
 }
