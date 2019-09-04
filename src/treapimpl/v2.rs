@@ -89,21 +89,20 @@ impl<K: Ord, V> Node<K, V> {
     /// Remove the given key from the treap tree
     ///
     fn _remove(node: &mut Option<Box<Node<K, V>>>) -> Option<Box<Node<K, V>>> {
-        if node.is_none() {
-            return None;
-        }
-        match **node.as_mut().unwrap() {
+        let boxed_node = node.as_mut()?;
+
+        match **boxed_node {
             Node {
-                left: Some(ref mut b_left),
-                right: Some(ref mut b_right),
+                left: Some(ref b_left),
+                right: Some(ref b_right),
                 ..
             } => {
                 if b_left.priority < b_right.priority {
-                    node.as_mut().unwrap().rotate_left();
-                    Self::remove(&mut node.as_mut().unwrap().left)
+                    boxed_node.rotate_left();
+                    Self::_remove(&mut boxed_node.left)
                 } else {
-                    node.as_mut().unwrap().rotate_right();
-                    Self::remove(&mut node.as_mut().unwrap().right)
+                    boxed_node.rotate_right();
+                    Self::_remove(&mut boxed_node.right)
                 }
             }
             Node {
@@ -111,7 +110,7 @@ impl<K: Ord, V> Node<K, V> {
                 right: Some(_),
                 ..
             } => {
-                let right = node.as_mut().unwrap().right.take();
+                let right = boxed_node.right.take();
                 std::mem::replace(node, right)
             }
             Node {
@@ -119,7 +118,7 @@ impl<K: Ord, V> Node<K, V> {
                 right: None,
                 ..
             } => {
-                let left = node.as_mut().unwrap().left.take();
+                let left = boxed_node.left.take();
                 std::mem::replace(node, left)
             }
             _ => node.take(),
@@ -343,7 +342,6 @@ mod test {
         let tp = vec![(1, 2), (3, 4), (5, 6)]
             .into_iter()
             .collect::<Treap<_, _>>();
-        // println!("{:?}", tp);
     }
     #[test]
     fn test_midorditer() {
