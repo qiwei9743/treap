@@ -246,6 +246,10 @@ impl<K: Ord, V> Treap<K, V> {
         self.len() == 0
     }
 
+    pub fn contains(&self, key: &K) -> bool {
+        self.0.as_ref().and_then(|x| x.get(key)).is_some()
+    }
+
     pub fn mid_order_iter(&self) -> MidOrderIter<K, V> {
         self.0
             .as_ref()
