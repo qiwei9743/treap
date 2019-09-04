@@ -1,7 +1,7 @@
 use std::iter::FromIterator;
 
 #[derive(Default, Debug)]
-struct Node<K, V> {
+pub struct Node<K, V> {
     key: K,
     value: V,
     size: usize,
@@ -159,21 +159,30 @@ impl<K: Ord, V> Node<K, V> {
     }
 
     fn mid_order_iter(&self) -> MidOrderIter<K, V> {
-        MidOrderIter{ nodes: vec![Travsal::Left(self)]}
+        MidOrderIter {
+            nodes: vec![Travsal::Left(self)],
+        }
     }
 }
 
-struct MidOrderIter<'a, K, V> {
+pub struct MidOrderIter<'a, K, V> {
     nodes: Vec<Travsal<&'a Node<K, V>>>,
 }
 
 impl<'a, K, V> Iterator for MidOrderIter<'a, K, V> {
-    type Item=&'a Node<K, V>;
+    type Item = &'a Node<K, V>;
     fn next(&mut self) -> Option<Self::Item> {
-        match self.nodes.pop() {
-            None => None,
-            Some(Travsal::Left(node)) => {None},
-            Some(Travsal::Right(node)) => {None},
+        loop {
+            match self.nodes.pop() {
+                None => return None,
+                Some(Travsal::Left(node)) => {
+                    self.nodes.push(Travsal::Right(node));
+                    if let Some(left) = &node.left {
+                        self.nodes.push(Travsal::Left(&**left));
+                    }
+                }
+                Some(Travsal::Right(node)) => return Some(node),
+            }
         }
     }
 }
@@ -184,6 +193,20 @@ pub struct Treap<K, V>(Option<Box<Node<K, V>>>);
 impl<K: Ord, V> Treap<K, V> {
     pub fn new() -> Treap<K, V> {
         Treap(None)
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.as_ref().map(|x| x.size).unwrap_or_default()
+    }
+
+    pub fn mid_order_iter(&self) -> MidOrderIter<K, V> {
+        if let Some(ref node) = self.0 {
+            MidOrderIter {
+                nodes: vec![Travsal::Left(&**node)],
+            }
+        } else {
+            MidOrderIter { nodes: vec![] }
+        }
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
@@ -234,7 +257,7 @@ where
 mod test {
     use super::Treap;
     #[test]
-    fn test_rank() {
+    fn test_rank1() {
         let mut tp = Treap::new();
         tp.insert(10, 100);
         tp.insert(11, 100);
@@ -243,6 +266,25 @@ mod test {
         assert_eq!(tp.nth(1), Some((&11, &100)));
         assert_eq!(tp.nth(2), Some((&13, &100)));
     }
+    #[test]
+    fn test_rank2() {
+        let mut tp = vec![
+            (1, 2),
+            (3, 4),
+            (5, 6),
+            (7, 8),
+            (2, 3),
+            (4, 5),
+            (8, 9),
+            (6, 7),
+        ]
+        .into_iter()
+        .collect::<Treap<_, _>>();
+        assert_eq!(tp.nth(0), Some((&1, &2)));
+        assert_eq!(tp.nth(100), None);
+        assert_eq!(tp.nth(tp.len()), None);
+        assert_eq!(tp.nth(tp.len()-1), Some((&8, &9)));
+    }
 
     #[test]
     fn test_remove() {
@@ -250,5 +292,22 @@ mod test {
             .into_iter()
             .collect::<Treap<_, _>>();
         println!("{:?}", tp);
+    }
+    #[test]
+    fn test_midorditer() {
+        let tp = vec![
+            (1, 2),
+            (3, 4),
+            (5, 6),
+            (7, 8),
+            (2, 3),
+            (4, 5),
+            (8, 9),
+            (6, 7),
+        ]
+        .into_iter()
+        .collect::<Treap<_, _>>();
+        let tvec = tp.mid_order_iter().map(|node| node.key).collect::<Vec<_>>();
+        assert_eq!(tvec.is_sorted(), true);
     }
 }
