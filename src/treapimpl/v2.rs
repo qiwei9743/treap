@@ -216,13 +216,22 @@ impl<'a, K, V> Iterator for MidOrderIter<'a, K, V> {
 #[derive(Debug)]
 pub struct Treap<K, V>(Option<Box<Node<K, V>>>);
 
+impl<K, V> Default for Treap<K, V> {
+    fn default() -> Self { Treap(None) }
+}
+
+
 impl<K: Ord, V> Treap<K, V> {
     pub fn new() -> Treap<K, V> {
-        Treap(None)
+        Default::default()
     }
 
     pub fn len(&self) -> usize {
         self.0.as_ref().map(|x| x.size).unwrap_or_default()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     pub fn mid_order_iter(&self) -> MidOrderIter<K, V> {
