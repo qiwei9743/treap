@@ -215,9 +215,10 @@ impl<'a, K, V> Iterator for MidOrderIter<'a, K, V> {
 pub struct Treap<K, V>(Option<Box<Node<K, V>>>);
 
 impl<K, V> Default for Treap<K, V> {
-    fn default() -> Self { Treap(None) }
+    fn default() -> Self {
+        Treap(None)
+    }
 }
-
 
 impl<K: Ord, V> Treap<K, V> {
     pub fn new() -> Treap<K, V> {
@@ -288,6 +289,7 @@ where
 
 #[cfg(test)]
 mod test {
+    use super::Iter;
     use super::Treap;
     #[test]
     fn test_rank1() {
@@ -324,7 +326,7 @@ mod test {
         let tp = vec![(1, 2), (3, 4), (5, 6)]
             .into_iter()
             .collect::<Treap<_, _>>();
-        println!("{:?}", tp);
+        // println!("{:?}", tp);
     }
     #[test]
     fn test_midorditer() {
@@ -344,7 +346,7 @@ mod test {
         assert_eq!(tvec.is_sorted(), true);
     }
     #[test]
-    fn test_node_midorditer() {
+    fn test_node_size() {
         let tp = vec![
             (1, 2),
             (3, 4),
@@ -357,6 +359,58 @@ mod test {
         ]
         .into_iter()
         .collect::<Treap<_, _>>();
+        for n in tp.0.as_ref().unwrap().iter() {
+            assert_eq!(
+                n.size,
+                1 + n.left.as_ref().iter().map(|node| node.size).sum::<usize>()
+                    + n.right.as_ref().iter().map(|node| node.size).sum::<usize>()
+            )
+        }
+        let tvec = tp.0.as_ref().unwrap().iter().collect::<Vec<_>>();
+        assert_eq!(tvec.len(), tp.len());
+        assert_eq!(tp.is_empty(), false);
+    }
+    #[test]
+    fn test_node_mid_order_iter() {
+        let tp = vec![
+            (1, 2),
+            (3, 4),
+            (5, 6),
+            (7, 8),
+            (2, 3),
+            (4, 5),
+            (8, 9),
+            (6, 7),
+        ]
+        .into_iter()
+        .collect::<Treap<_, _>>();
+        for n in tp.0.as_ref().unwrap().iter() {
+            assert_eq!(
+                n.size,
+                1 + n.left.as_ref().map(|node| node.size).unwrap_or(0)
+                    + n.right.as_ref().map(|node| node.size).unwrap_or(0)
+            );
+        }
+        for n in tp.0.as_ref().unwrap().iter() {
+            assert_eq!(
+                n.size,
+                1 + n
+                    .left
+                    .as_ref()
+                    .map(|x| x.iter())
+                    .unwrap_or(Iter { nodes: vec![] })
+                    .count()
+                    + n.right
+                        .as_ref()
+                        .map(|x| x.iter())
+                        .unwrap_or(Iter { nodes: vec![] })
+                        .count()
+            );
+        }
+
+        let tvec = tp.0.as_ref().unwrap().iter().collect::<Vec<_>>();
+        assert_eq!(tvec.len(), tp.len());
+        assert_eq!(tp.is_empty(), false);
     }
     #[test]
     fn test_iter() {
