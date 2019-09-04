@@ -20,7 +20,6 @@ impl<K: Ord, V> Node<K, V> {
         root: &mut Option<Box<Node<K, V>>>,
         new_node: Box<Node<K, V>>,
     ) -> Option<Box<Node<K, V>>> {
-        // TODO:
         if let Some(ref mut root) = *root {
             root.insert(new_node)
         } else {
@@ -163,6 +162,33 @@ impl<K: Ord, V> Node<K, V> {
             nodes: vec![Travsal::Left(self)],
         }
     }
+
+    // in bfs order，maybe changed later.
+    fn iter(&self) -> Iter<K, V> {
+        Iter { nodes: vec![self] }
+    }
+}
+
+pub struct Iter<'a, K, V> {
+    nodes: Vec<&'a Node<K, V>>,
+}
+
+impl<'a, K, V> Iterator for Iter<'a, K, V> {
+    type Item = &'a Node<K, V>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.nodes.pop() {
+            if let Some(x) = node.left.as_ref() {
+                self.nodes.push(x);
+            }
+            if let Some(x) = node.right.as_ref() {
+                self.nodes.push(x);
+            }
+
+            Some(node)
+        } else {
+            None
+        }
+    }
 }
 
 pub struct MidOrderIter<'a, K, V> {
@@ -200,13 +226,16 @@ impl<K: Ord, V> Treap<K, V> {
     }
 
     pub fn mid_order_iter(&self) -> MidOrderIter<K, V> {
-        if let Some(ref node) = self.0 {
-            MidOrderIter {
-                nodes: vec![Travsal::Left(&**node)],
-            }
-        } else {
-            MidOrderIter { nodes: vec![] }
-        }
+        self.0
+            .as_ref()
+            .map(|x| x.mid_order_iter())
+            .unwrap_or(MidOrderIter { nodes: vec![] })
+    }
+    pub fn iter(&self) -> Iter<K, V> {
+        self.0
+            .as_ref()
+            .map(|x| x.iter())
+            .unwrap_or(Iter { nodes: vec![] })
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
@@ -283,7 +312,7 @@ mod test {
         assert_eq!(tp.nth(0), Some((&1, &2)));
         assert_eq!(tp.nth(100), None);
         assert_eq!(tp.nth(tp.len()), None);
-        assert_eq!(tp.nth(tp.len()-1), Some((&8, &9)));
+        assert_eq!(tp.nth(tp.len() - 1), Some((&8, &9)));
     }
 
     #[test]
@@ -309,5 +338,37 @@ mod test {
         .collect::<Treap<_, _>>();
         let tvec = tp.mid_order_iter().map(|node| node.key).collect::<Vec<_>>();
         assert_eq!(tvec.is_sorted(), true);
+    }
+    #[test]
+    fn test_node_midorditer() {
+        let tp = vec![
+            (1, 2),
+            (3, 4),
+            (5, 6),
+            (7, 8),
+            (2, 3),
+            (4, 5),
+            (8, 9),
+            (6, 7),
+        ]
+        .into_iter()
+        .collect::<Treap<_, _>>();
+    }
+    #[test]
+    fn test_iter() {
+        let tp = vec![
+            (1, 2),
+            (3, 4),
+            (5, 6),
+            (7, 8),
+            (2, 3),
+            (4, 5),
+            (8, 9),
+            (6, 7),
+        ]
+        .into_iter()
+        .collect::<Treap<_, _>>();
+        let tvec = tp.iter().collect::<Vec<_>>();
+        assert_eq!(tvec.len(), tp.len());
     }
 }
