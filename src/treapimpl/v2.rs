@@ -29,7 +29,7 @@ impl<K: Ord, V> Node<K, V> {
     }
 
     pub fn insert(&mut self, new_node: Box<Node<K, V>>) -> Option<Box<Node<K, V>>> {
-        let ret = match self.key.cmp(&new_node.key) {
+        match self.key.cmp(&new_node.key) {
             std::cmp::Ordering::Equal => Some(new_node),
             std::cmp::Ordering::Greater => {
                 let ret = Self::insert_or_replace(&mut self.left, new_node);
@@ -51,9 +51,7 @@ impl<K: Ord, V> Node<K, V> {
                 }
                 ret
             }
-        };
-
-        ret
+        }
     }
 
     pub fn nth(&self, nth: usize) -> Option<(&K, &V)> {
@@ -260,10 +258,7 @@ impl<K: Ord, V> Treap<K, V> {
     }
 
     pub fn nth(&mut self, nth: usize) -> Option<(&K, &V)> {
-        if self.0.is_none() {
-            return None;
-        }
-        self.0.as_ref().unwrap().nth(nth)
+        self.0.as_ref()?.nth(nth)
     }
 }
 
