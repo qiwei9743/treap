@@ -70,28 +70,25 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&V> {
-        match key.cmp(&self.key) {
-            std::cmp::Ordering::Equal => Some(&self.value),
-            std::cmp::Ordering::Less => self.left.as_ref().and_then(|node| node.get(key)),
-            std::cmp::Ordering::Greater => self.right.as_ref().and_then(|node| node.get(key)),
-        }
-    }
-
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        self._get_mut(key).map(|x| &mut x.value)
-    }
-
-    fn _get_mut(&mut self, key: &K) -> Option<&mut Self> {
+    pub fn get(&self, key: &K) -> Option<&Node<K, V>> {
         match key.cmp(&self.key) {
             std::cmp::Ordering::Equal => Some(self),
-            std::cmp::Ordering::Less => self.left.as_mut().and_then(|node| node._get_mut(key)),
-            std::cmp::Ordering::Greater => self.right.as_mut().and_then(|node| node._get_mut(key)),
+            std::cmp::Ordering::Less => self.left.as_ref()?.get(key),
+            std::cmp::Ordering::Greater => self.right.as_ref()?.get(key),
         }
     }
+
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut Node<K, V>> {
+        match key.cmp(&self.key) {
+            std::cmp::Ordering::Equal => Some(self),
+            std::cmp::Ordering::Less => self.left.as_mut()?.get_mut(key),
+            std::cmp::Ordering::Greater => self.right.as_mut()?.get_mut(key),
+        }
+    }
+
     /// Remove the given key from the treap tree
     ///
-    pub fn remove(node: &mut Option<Box<Node<K, V>>>) -> Option<Box<Node<K, V>>> {
+    fn _remove(node: &mut Option<Box<Node<K, V>>>) -> Option<Box<Node<K, V>>> {
         if node.is_none() {
             return None;
         }
@@ -130,8 +127,7 @@ impl<K: Ord, V> Node<K, V> {
     }
 
     fn rotate_left(&mut self) {
-        let right = self.right.take();
-        if let Some(mut node) = right {
+        if let Some(mut node) = self.right.take() {
             self.right = node.left.take();
 
             self.size -= node.size;
@@ -143,8 +139,7 @@ impl<K: Ord, V> Node<K, V> {
         }
     }
     fn rotate_right(&mut self) {
-        let left = self.left.take();
-        if let Some(mut node) = left {
+        if let Some(mut node) = self.left.take() {
             self.left = node.right.take();
 
             self.size -= node.size;
