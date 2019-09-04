@@ -1,4 +1,5 @@
 use std::iter::FromIterator;
+use std::ops::{Index, IndexMut};
 
 #[derive(Default, Debug)]
 pub struct Node<K, V> {
@@ -217,6 +218,23 @@ pub struct Treap<K, V>(Option<Box<Node<K, V>>>);
 impl<K, V> Default for Treap<K, V> {
     fn default() -> Self {
         Treap(None)
+    }
+}
+
+impl<'a, K: Ord, V> Index<&'a K> for Treap<K, V> {
+    type Output = V;
+
+    fn index(&self, key: &K) -> &Self::Output {
+        let msg = "no entry for key";
+        &self.0.as_ref().expect(msg).get(key).expect(msg).value
+    }
+}
+
+impl<'a, K: Ord, V> IndexMut<&'a K> for Treap<K, V> {
+    /// Performs the mutable indexing (`container[index]`) operation.
+    fn index_mut(&mut self, key: &K) -> &mut Self::Output {
+        let msg = "no entry for key";
+        &mut self.0.as_mut().expect(msg).get_mut(key).expect(msg).value
     }
 }
 
