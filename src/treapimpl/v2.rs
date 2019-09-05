@@ -88,40 +88,66 @@ impl<K: Ord, V> Node<K, V> {
 
     /// Remove the given key from the treap tree
     ///
-    fn _remove(node: &mut Option<Box<Node<K, V>>>) -> Option<Box<Node<K, V>>> {
-        let boxed_node = node.as_mut()?;
-
-        match **boxed_node {
+    fn remove(root: &mut Option<Box<Node<K, V>>>, key: &K) -> Option<Box<Node<K, V>>> {
+        let boxed = root.as_mut()?;
+        match key.cmp(&boxed.key) {
+            std::cmp::Ordering::Equal => {
+                Self::_remove(root)
+            }
+            std::cmp::Ordering::Less => {
+                let removed = Self::remove(&mut boxed.left, key);
+                if removed.is_some() {
+                    boxed.size -= 1;
+                }
+                removed
+            },
+            std::cmp::Ordering::Greater => {
+                let removed = Self::remove(&mut boxed.right, key);
+                if removed.is_some() {
+                    boxed.size -= 1;
+                }
+                removed
+            },
+        }
+    }
+    fn _remove(root: &mut Option<Box<Node<K, V>>>) -> Option<Box<Node<K, V>>> {
+        let boxed = root.as_mut().unwrap();
+        match **boxed {
             Node {
                 left: Some(ref b_left),
                 right: Some(ref b_right),
                 ..
             } => {
-                if b_left.priority < b_right.priority {
-                    boxed_node.rotate_left();
-                    Self::_remove(&mut boxed_node.left)
+
+                let removed = if b_left.priority < b_right.priority {
+                    boxed.rotate_left();
+                    Self::_remove(&mut boxed.left)
                 } else {
-                    boxed_node.rotate_right();
-                    Self::_remove(&mut boxed_node.right)
-                }
-            }
+                    boxed.rotate_right();
+                    Self::_remove(&mut boxed.right)
+                };
+                boxed.size -= 1;
+                removed
+            },
             Node {
                 left: None,
                 right: Some(_),
                 ..
             } => {
-                let right = boxed_node.right.take();
-                std::mem::replace(node, right)
-            }
+                let right = boxed.right.take();
+                std::mem::replace(root, right)
+            },
             Node {
                 left: Some(_),
                 right: None,
                 ..
             } => {
-                let left = boxed_node.left.take();
-                std::mem::replace(node, left)
+                let left = boxed.left.take();
+                std::mem::replace(root, left)
+            },
+            _ => {
+                root.take()
             }
-            _ => node.take(),
         }
     }
 
@@ -277,6 +303,10 @@ impl<K: Ord, V> Treap<K, V> {
     pub fn nth(&mut self, nth: usize) -> Option<(&K, &V)> {
         self.0.as_ref()?.nth(nth)
     }
+
+    pub fn remove(&mut self, key: &K) -> Option<V> {
+        Node::remove(&mut self.0, key).map(|x| x.value)
+    }
 }
 
 impl<K, V> Extend<(K, V)> for Treap<K, V>
@@ -339,9 +369,21 @@ mod test {
 
     #[test]
     fn test_remove() {
-        let tp = vec![(1, 2), (3, 4), (5, 6)]
+        let mut tp = vec![(1, 2), (2, 3), (3, 4), (5, 6), (7, 8), (9, 10)]
             .into_iter()
             .collect::<Treap<_, _>>();
+        assert_eq!(tp.contains(&1), true);
+        verify_node_size(&tp);
+        assert_eq!(tp.remove(&1), Some(2));
+        assert_eq!(tp.contains(&1), false);
+        assert_eq!(tp.len(), 5);
+        verify_node_size(&tp);
+        
+        assert_eq!(tp.remove(&3), Some(4));
+        verify_node_size(&tp);
+        assert_eq!(tp.remove(&5), Some(6));
+        verify_node_size(&tp);
+        assert_eq!(tp.len(), 3);
     }
     #[test]
     fn test_midorditer() {
@@ -374,13 +416,9 @@ mod test {
         ]
         .into_iter()
         .collect::<Treap<_, _>>();
-        for n in tp.0.as_ref().unwrap().iter() {
-            assert_eq!(
-                n.size,
-                1 + n.left.as_ref().iter().map(|node| node.size).sum::<usize>()
-                    + n.right.as_ref().iter().map(|node| node.size).sum::<usize>()
-            )
-        }
+
+        verify_node_size(&tp);
+
         let tvec = tp.0.as_ref().unwrap().iter().collect::<Vec<_>>();
         assert_eq!(tvec.len(), tp.len());
         assert_eq!(tp.is_empty(), false);
@@ -399,29 +437,7 @@ mod test {
         ]
         .into_iter()
         .collect::<Treap<_, _>>();
-        for n in tp.0.as_ref().unwrap().iter() {
-            assert_eq!(
-                n.size,
-                1 + n.left.as_ref().map(|node| node.size).unwrap_or(0)
-                    + n.right.as_ref().map(|node| node.size).unwrap_or(0)
-            );
-        }
-        for n in tp.0.as_ref().unwrap().iter() {
-            assert_eq!(
-                n.size,
-                1 + n
-                    .left
-                    .as_ref()
-                    .map(|x| x.iter())
-                    .unwrap_or(Iter { nodes: vec![] })
-                    .count()
-                    + n.right
-                        .as_ref()
-                        .map(|x| x.iter())
-                        .unwrap_or(Iter { nodes: vec![] })
-                        .count()
-            );
-        }
+        verify_node_size(&tp);
 
         let tvec = tp.0.as_ref().unwrap().iter().collect::<Vec<_>>();
         assert_eq!(tvec.len(), tp.len());
@@ -443,5 +459,40 @@ mod test {
         .collect::<Treap<_, _>>();
         let tvec = tp.iter().collect::<Vec<_>>();
         assert_eq!(tvec.len(), tp.len());
+    }
+
+    fn verify_node_size<K: Ord, V>(tp: &Treap<K, V>)  {
+        for n in tp.0.as_ref().unwrap().iter() {
+            assert_eq!(
+                n.size,
+                1 + n.left.as_ref().map(|node| node.size).unwrap_or(0)
+                    + n.right.as_ref().map(|node| node.size).unwrap_or(0)
+            );
+        }
+
+        for n in tp.0.as_ref().unwrap().iter() {
+            assert_eq!(
+                n.size,
+                1 + n
+                    .left
+                    .as_ref()
+                    .map(|x| x.iter())
+                    .unwrap_or(Iter { nodes: vec![] })
+                    .count()
+                    + n.right
+                    .as_ref()
+                    .map(|x| x.iter())
+                    .unwrap_or(Iter { nodes: vec![] })
+                    .count()
+            );
+        }
+
+        for n in tp.0.as_ref().unwrap().iter() {
+            assert_eq!(
+                n.size,
+                1 + n.left.as_ref().iter().map(|node| node.size).sum::<usize>()
+                    + n.right.as_ref().iter().map(|node| node.size).sum::<usize>()
+            )
+        }
     }
 }
