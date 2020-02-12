@@ -19,19 +19,29 @@ enum Travsal<T> {
 impl<K: Ord, V> Node<K, V> {
     pub fn insert_or_replace(
         root: &mut Option<Box<Node<K, V>>>,
-        new_node: Box<Node<K, V>>,
+        new_node: Node<K, V>,
     ) -> Option<Box<Node<K, V>>> {
         if let Some(ref mut root) = *root {
             root.insert(new_node)
         } else {
-            *root = Some(new_node);
+            *root = Some(Box::new(new_node));
             None
         }
     }
 
-    pub fn insert(&mut self, new_node: Box<Node<K, V>>) -> Option<Box<Node<K, V>>> {
+    pub fn insert(&mut self, new_node: Node<K, V>) -> Option<Box<Node<K, V>>> {
         match self.key.cmp(&new_node.key) {
-            std::cmp::Ordering::Equal => Some(new_node),
+            std::cmp::Ordering::Equal => {
+                let mut old = std::mem::replace(self, new_node);
+                self.left = old.left.take();
+                self.right = old.right.take();
+                self.size = old.size;
+                
+                if self.priority < old.priority {
+                    self.priority = old.priority;
+                }
+                Some(Box::new(old))
+            },
             std::cmp::Ordering::Greater => {
                 let ret = Self::insert_or_replace(&mut self.left, new_node);
                 if ret.is_none() {
@@ -289,14 +299,14 @@ impl<K: Ord, V> Treap<K, V> {
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        let new_node = Box::new(Node {
+        let new_node = Node {
             key,
             value,
             size: 1,
             priority: rand::random(),
             left: None,
             right: None,
-        });
+        };
         Node::insert_or_replace(&mut self.0, new_node).map(|x| x.value)
     }
 
