@@ -400,7 +400,7 @@ mod test {
         .into_iter()
         .collect::<Treap<_, _>>();
         let tvec = tp.mid_order_iter().map(|node| node.key).collect::<Vec<_>>();
-        assert_eq!(tvec.is_sorted(), true);
+        assert_eq!(is_sorted(&tvec[..]), true);
     }
     #[test]
     fn test_node_size() {
@@ -494,5 +494,8 @@ mod test {
                     + n.right.as_ref().iter().map(|node| node.size).sum::<usize>()
             )
         }
+    }
+    fn is_sorted<T: std::cmp::PartialOrd>(arr: &[T]) -> bool {
+        arr.iter().zip(arr.iter().skip(1)).all(|(p, n)| p < n)
     }
 }
