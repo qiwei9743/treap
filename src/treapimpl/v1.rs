@@ -86,6 +86,29 @@ where
             true
         }
     }
+    // fn nth(&self, root: Option<Rc<RefCell<TNode<T>>>>, nth: usize) -> Option<Ref<T>> {
+    //     if nth < root.as_ref().map(|x| x.borrow().size).unwrap_or(0) {
+    //         let left_size = root
+    //             .as_ref()
+    //             .and_then(|x| x.borrow().left.as_ref().map(|y| y.borrow().size))
+    //             .unwrap_or(0);
+
+    //         return if nth < left_size {
+    //             self.nth(
+    //                 root.as_ref().unwrap().borrow().left.clone(),
+    //                 nth
+    //             )
+    //         } else if nth == left_size {
+    //             root.clone().map(|x| Ref::map(x.borrow(), |y| &y.key))
+    //         } else {
+    //             self.nth(
+    //                 root.as_ref().unwrap().borrow().right.clone(),
+    //                 nth - left_size - 1
+    //             )
+    //         }
+    //     }
+    //     None
+    // }
 
     // fn nth(root: &Option<Rc<RefCell<TNode<T>>>>, nth: usize) -> Option<Ref<T>> {
     //     if nth < root.as_ref().map(|x| x.borrow().size).unwrap_or(0) {
@@ -93,10 +116,11 @@ where
     //             .as_ref()
     //             .and_then(|x| x.borrow().left.as_ref().map(|y| y.borrow().size))
     //             .unwrap_or(0);
+
     //         return if nth < left_size {
     //             Self::nth(&root.as_ref().unwrap().borrow().left, nth)
     //         } else if nth == left_size {
-    //             root.as_ref().map(|x| std::cell::Ref::map(x.borrow(), |y| &y.key))
+    //             root.as_ref().map(|x| Ref::map(x.borrow(), |y| &y.key))
     //         } else {
     //             Self::nth(&root.as_ref().unwrap().borrow().right, nth - left_size - 1)
     //         }
